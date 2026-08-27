@@ -1,4 +1,4 @@
-name: Deploy game to GitHub Pages
+name: Deploy exact game to GitHub Pages
 
 on:
   push:
@@ -21,24 +21,10 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: Configure Pages
-        uses: actions/configure-pages@v5
+      - uses: actions/checkout@v4
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
         with:
-          enablement: true
-      - name: Prepare static game
-        run: |
-          mkdir -p github-pages-dist/game
-          cp github-pages/index.html github-pages-dist/index.html
-          cp github-pages/game.js github-pages-dist/game.js
-          cp github-pages/styles.css github-pages-dist/styles.css
-          cp public/game/* github-pages-dist/game/
-          touch github-pages-dist/.nojekyll
-      - name: Upload Pages artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: github-pages-dist
-      - name: Deploy to Pages
-        id: deployment
+          path: site-dist
+      - id: deployment
         uses: actions/deploy-pages@v4
