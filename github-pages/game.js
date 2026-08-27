@@ -1,40 +1,51 @@
-const rounds=[
-{name:"cows",answer:6,image:"game/cows-v2.webp",points:[[27,35],[51,35],[75,35],[27,70],[51,70],[75,70]]},
-{name:"horses",answer:9,image:"game/horses-v2.webp",points:[[27,28],[51,28],[75,28],[27,53],[51,53],[75,53],[27,78],[51,78],[75,78]]},
-{name:"pigs",answer:10,image:"game/pigs-v2.webp",points:[[15,32],[35,32],[53,32],[70,32],[88,32],[15,70],[35,70],[53,70],[70,70],[88,70]]},
-{name:"sheep",answer:8,image:"game/sheep-v2.webp",points:[[18,31],[42,31],[65,31],[87,31],[18,69],[42,69],[65,69],[87,69]]},
-{name:"ducks",answer:7,image:"game/ducks-v2.webp",points:[[29,35],[52,35],[75,35],[15,69],[39,69],[63,69],[87,69]]},
-{name:"roosters",answer:3,image:"game/roosters-v2.webp",points:[[25,56],[51,56],[76,56]]},
-{name:"cats",answer:5,image:"game/cats-v2.webp",points:[[39,36],[61,36],[28,69],[51,69],[73,69]]},
-{name:"dogs",answer:4,image:"game/dogs-v2.webp",points:[[20,52],[42,52],[65,52],[86,52]]},
-{name:"frogs",answer:2,image:"game/frogs-v2.webp",points:[[35,58],[68,58]]}
+const rounds = [
+  {name:"elephants", label:"Elephant", answer:1, sprite:0},
+  {name:"giraffes", label:"Giraffe", answer:2, sprite:1},
+  {name:"bears", label:"Bear", answer:3, sprite:2},
+  {name:"crocodiles", label:"Crocodile", answer:4, sprite:3},
+  {name:"tigers", label:"Tiger", answer:5, sprite:4},
+  {name:"kangaroos", label:"Kangaroo", answer:6, sprite:5},
+  {name:"lions", label:"Lion", answer:7, sprite:6},
+  {name:"zebras", label:"Zebra", answer:8, sprite:7},
+  {name:"monkeys", label:"Monkey", answer:9, sprite:8},
+  {name:"pandas", label:"Panda", answer:10, sprite:9},
+  {name:"foxes", label:"Fox", answer:11, sprite:10},
+  {name:"hippos", label:"Hippopotamus", answer:3, sprite:11},
+  {name:"macaws", label:"Macaw", answer:6, sprite:12},
+  {name:"wolves", label:"Wolf", answer:9, sprite:13}
 ];
-let screen="start",index=0,score=0,picked=null,wrong=[],counted=0,sound=true,ctx=null;
+const words=["zero","one","two","three","four","five","six","seven","eight","nine","ten","eleven"];
+let screen="start", index=0, score=0, counted=0, wrong=[], sound=true;
 const root=document.getElementById("game");
-const icon=(name)=>name==="sound"?(sound?"🔊":"🔇"):name==="star"?"★":name==="sparkle"?"✦":"↻";
-function britishVoice(){return speechSynthesis.getVoices().find(v=>v.lang==="en-GB"&&/natural|premium|enhanced|google|microsoft/i.test(v.name))||speechSynthesis.getVoices().find(v=>v.lang==="en-GB")||null}
-function say(text){if(!sound)return;speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(text);u.lang="en-GB";u.rate=.9;u.pitch=1;u.voice=britishVoice();speechSynthesis.speak(u)}
-function choices(r){const s=new Set([r.answer]);let o=1;while(s.size<3){const lo=Math.max(1,r.answer-o),hi=Math.min(10,r.answer+o);if(lo!==r.answer)s.add(lo);if(s.size<3&&hi!==r.answer)s.add(hi);o++}return [...s].sort((a,b)=>a-b)}
-function shell(content){return '<div class="cloud cloud-a"></div><div class="cloud cloud-b"></div><div class="twinkles" aria-hidden="true"><i>✦</i><i>✧</i><i>✦</i><i>✧</i><i>✦</i><i>✧</i></div><header class="topbar"><div class="brand" aria-label="Учимся с Ларисой Коротаевой"><span class="brand-mark">✦</span><span class="brand-copy"><small>Учимся с</small><strong>Ларисой Коротаевой</strong></span></div><button class="sound" id="sound" aria-label="Sound">'+icon("sound")+'</button></header>'+content+'<div class="grass"></div>'}
+
+function voice(text){
+  if(!sound || !window.speechSynthesis) return;
+  speechSynthesis.cancel();
+  const u=new SpeechSynthesisUtterance(text), voices=speechSynthesis.getVoices();
+  u.voice=voices.find(v=>v.lang==="en-GB" && /natural|enhanced|premium|serena|sonia|daniel/i.test(v.name)) || voices.find(v=>v.lang==="en-GB") || null;
+  u.lang="en-GB"; u.rate=.86; u.pitch=1.02; speechSynthesis.speak(u);
+}
+function shell(content){return '<header><div class="brand"><span class="brand-star">✦</span><span><small>Учимся с</small><b>Ларисой Коротаевой</b></span></div><button id="sound" class="sound" aria-label="Toggle sound">'+(sound?'Sound on':'Sound off')+'</button></header>'+content;}
+function options(answer){const v=[answer-1,answer,answer+1].map(n=>Math.max(1,Math.min(11,n)));return new Set(v).size<3?(answer===1?[1,2,3]:[9,10,11]):v;}
 function render(){
- if(screen==="start") root.innerHTML=shell('<section class="start-card"><div class="sticker">✦ COUNT 1–10</div><h1>Magical Farm<br><span>Counting Adventure</span></h1><div class="cover-wrap"><img src="game/cows-v2.webp" alt="Animated farm animals in a sunny meadow"><div class="cover-badge">★ A counting adventure</div></div><button class="primary" id="start">✦ START <span>→</span></button><small>9 fun rounds · English listening practice</small></section>');
- if(screen==="play"){
-  const r=rounds[index],locked=counted<r.answer;
-  const spots=r.points.map((p,i)=>'<button data-animal="'+i+'" class="'+(i<counted?"counted ":"")+(i===counted?"next":"")+'" style="left:'+p[0]+'%;top:'+p[1]+'%" aria-label="'+(i+1)+'"><span>'+(i+1)+'</span></button>').join("");
-  const opts=choices(r).map(v=>'<button data-answer="'+v+'" '+(picked!==null||locked?"disabled":"")+' class="'+(picked===v?"correct ":"")+(wrong.includes(v)?"wrong":"")+'">'+v+'</button>').join("");
-  root.innerHTML=shell('<section class="play-card"><div class="game-status"><span>Round '+(index+1)+' of '+rounds.length+'</span><div class="score">★ '+score+'</div></div><div class="progress"><div style="width:'+(((index+(picked!==null?1:0))/rounds.length)*100)+'%"></div></div><button class="question" id="question">Count the '+r.name+'. How many are there? 🔊</button><div class="scene count-'+r.answer+'"><img src="'+r.image+'" alt="Count the '+r.name+'"><div class="animal-hotspots">'+spots+'</div>'+(picked!==null?'<div class="correct-burst"><span>★</span> Great job!</div>':'')+'</div><div class="answer-area"><p>Choose the answer</p><div class="answers">'+opts+'</div>'+(locked?'<div class="count-first">Count every animal in order to unlock the answers.</div>':'')+(wrong.length&&picked===null?'<div class="hint">Almost! Touch each animal and count again.</div>':'')+'</div></section>');
- }
- if(screen==="finish")root.innerHTML=shell('<section class="finish-card"><div class="stars">★ ★ ★</div><h1>Magical!</h1><p>You counted every animal and brought a golden star to the farm!</p><div class="medal"><span class="award">★</span><strong>'+score+' / '+rounds.length+'</strong><span>Farm Star</span></div><button class="primary" id="start">↻ Play again</button></section>');
- bind();
+  if(screen==="start") root.innerHTML=shell('<section class="start-card"><div class="eyebrow">COUNT 1–11</div><h1>Wild Animal<br><span>Counting Adventure</span></h1><p>Meet friendly animals, count them in order and choose the right number.</p><div class="hero-animal sprite s6"></div><button class="primary" id="start">START <span>→</span></button><small>14 fun rounds · British English</small></section>');
+  else if(screen==="finish") {root.innerHTML=shell('<section class="finish-card"><div class="medal"><span>★</span></div><div class="eyebrow">ADVENTURE COMPLETE</div><h1>Brilliant counting!</h1><p>You counted all the wild animals.</p><div class="final-score">'+score+' / '+rounds.length+' stars</div><button class="primary" id="again">PLAY AGAIN</button></section>');celebration();}
+  else {
+    const r=rounds[index];
+    const animals=Array.from({length:r.answer},(_,i)=>'<button class="animal '+(i<counted?'done':'')+'" data-i="'+i+'" aria-label="'+r.label+' '+(i+1)+'"><span class="sprite s'+r.sprite+'"></span><i>'+(i<counted?i+1:'')+'</i></button>').join('');
+    const answers=options(r.answer).map(n=>'<button class="answer '+(wrong.includes(n)?'wrong':'')+'" data-answer="'+n+'" '+(counted<r.answer?'disabled':'')+'>'+n+'</button>').join('');
+    root.innerHTML=shell('<section class="play-card"><div class="status"><span>Round '+(index+1)+' of '+rounds.length+'</span><b>★ '+score+'</b></div><div class="progress"><i style="width:'+((index/rounds.length)*100)+'%"></i></div><button id="question" class="question">Count the '+r.name+'. How many are there? <span>Listen</span></button><div class="animal-grid count-'+r.answer+'">'+animals+'</div><div class="answer-zone"><p>'+(counted<r.answer?'Count every animal in order':'Choose the answer')+'</p><div class="answers">'+answers+'</div></div></section>');
+  }
+  bind();
 }
 function bind(){
- document.getElementById("sound").onclick=()=>{sound=!sound;if(!sound)speechSynthesis.cancel();render()};
- const start=document.getElementById("start");if(start)start.onclick=()=>{if(!ctx)ctx=new(window.AudioContext||window.webkitAudioContext)();ctx.resume();screen="play";index=0;score=0;picked=null;wrong=[];counted=0;render();setTimeout(()=>say("Count the cows. How many are there?"),120)};
- const q=document.getElementById("question");if(q)q.onclick=()=>say("Count the "+rounds[index].name+". How many are there?");
- document.querySelectorAll("[data-animal]").forEach(b=>{const act=()=>countAnimal(+b.dataset.animal);b.onpointerenter=act;b.onclick=act;b.onfocus=act});
- document.querySelectorAll("[data-answer]").forEach(b=>b.onclick=()=>choose(+b.dataset.answer));
+  document.getElementById("sound")?.addEventListener("click",()=>{sound=!sound;speechSynthesis?.cancel();render();});
+  document.getElementById("start")?.addEventListener("click",()=>{screen="play";voice("Let's count the wild animals!");render();});
+  document.getElementById("again")?.addEventListener("click",()=>{index=0;score=0;counted=0;wrong=[];screen="play";render();});
+  document.getElementById("question")?.addEventListener("click",()=>voice("Count the "+rounds[index].name+". How many are there?"));
+  document.querySelectorAll(".animal").forEach(el=>{const act=()=>{const i=Number(el.dataset.i);if(i!==counted)return;counted++;voice(words[counted]);render();};el.addEventListener("mouseenter",act,{once:true});el.addEventListener("click",act,{once:true});});
+  document.querySelectorAll(".answer").forEach(el=>el.addEventListener("click",()=>choose(Number(el.dataset.answer))));
 }
-function countAnimal(i){if(i!==counted)return;counted++;say(String(i+1));render()}
-function choose(v){const r=rounds[index];if(picked!==null||counted<r.answer)return;if(v===r.answer){picked=v;score++;counted=0;say(index===rounds.length-1?"Great job!":"Great job! There are "+r.answer+" "+r.name+".");render();setTimeout(()=>{if(index===rounds.length-1){screen="finish";render();playVictory()}else{index++;picked=null;wrong=[];counted=0;render();setTimeout(()=>say("Count the "+rounds[index].name+". How many are there?"),100)}},1200)}else{wrong.push(v);say("Try again! Count slowly.");render()}}
-function playVictory(){if(!sound||!ctx)return;ctx.resume();const now=ctx.currentTime,notes=[523.25,659.25,783.99,1046.5];notes.forEach((f,i)=>{const o=ctx.createOscillator(),g=ctx.createGain();o.type=i===3?"sine":"triangle";o.frequency.value=f;g.gain.setValueAtTime(0,now+i*.18);g.gain.linearRampToValueAtTime(.18,now+i*.18+.03);g.gain.exponentialRampToValueAtTime(.001,now+i*.18+.65);o.connect(g).connect(ctx.destination);o.start(now+i*.18);o.stop(now+i*.18+.7)})}
-speechSynthesis.onvoiceschanged=()=>{};render();
+function choose(n){const r=rounds[index];if(counted<r.answer)return;if(n!==r.answer){wrong.push(n);voice("Try again");render();return;}score++;voice("Great job!");setTimeout(()=>{index++;counted=0;wrong=[];if(index===rounds.length)screen="finish";render();},700);}
+function celebration(){if(!sound)return;const AC=window.AudioContext||window.webkitAudioContext;if(!AC)return;const ctx=new AC(),now=ctx.currentTime;[523,659,784,1047].forEach((f,i)=>{const o=ctx.createOscillator(),g=ctx.createGain();o.type="triangle";o.frequency.value=f;g.gain.setValueAtTime(0,now+i*.18);g.gain.linearRampToValueAtTime(.18,now+i*.18+.03);g.gain.exponentialRampToValueAtTime(.001,now+i*.18+.55);o.connect(g).connect(ctx.destination);o.start(now+i*.18);o.stop(now+i*.18+.6);});}
+render();
